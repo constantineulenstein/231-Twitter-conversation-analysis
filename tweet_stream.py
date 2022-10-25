@@ -79,14 +79,15 @@ def get_conversation_data(conv_id, client):
                 **request_args,
                 next_token=conversation.meta["next_token"],
             )
+
+            for conv in conversation.data:
+                conversation_data.append(
+                    (conv["id"], conv["referenced_tweets"][0]["id"])
+                )
+
         except TooManyRequests:
             print("Too many requests sent recently, waiting 15mn")
             time.sleep(15 * 60)
-
-        for conv in conversation.data:
-            conversation_data.append(
-                (conv["id"], conv["referenced_tweets"][0]["id"])
-            )
 
     # Write in the cached data
     json.dump(conversation_data, open(cached_data_file, "w"))
@@ -142,6 +143,8 @@ def get_legislator_tweets(client):
             user_id = int(legs["social.twitter_id"][idx])
         except ValueError:
             print("Twitter id not present for", official_name)
+            continue
+
         official_name = legs["name.official_full"][idx]
         party = legs["party"][idx]
 
@@ -164,6 +167,7 @@ def get_legislator_tweets(client):
             # For example, Lindsey Graham's account in the data we pulled is not the
             # one he uses, it's a very old one.
             print("No tweets found for", official_name, ", is the account correct ?")
+            continue
 
         while "next_token" in tweets_meta:
             new_tweets, tweets_meta = retrieve_and_populate_tweets_data_for_user(
