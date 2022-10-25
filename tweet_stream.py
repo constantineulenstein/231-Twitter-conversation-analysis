@@ -7,8 +7,9 @@ import json
 import datetime
 from treelib import Node, Tree
 from pathlib import Path
+from glob import glob
 
-from tweepy import Stream, Client, StreamingClient, StreamRule, Paginator
+from tweepy import Client, TooManyRequests
 
 
 def create_twitter_client():
@@ -29,28 +30,73 @@ def create_twitter_client():
 
 
 def get_conversation_data(conv_id, client):
+    Path("data/conversations").mkdir(exist_ok=True)
+
+    # See if cached data exists and if so, return it
+    cached_data_file = Path(f"data/conversations/conversation_{conv_id}.json")
+    if cached_data_file.exists():
+        cached_data = json.load(open(cached_data_file, "r"))
+        print(
+            f"Conversation",
+            conv_id,
+            "data exists already, using",
+            len(cached_data),
+            "cached tweets...",
+        )
+        return cached_data
+
     request_args = {
         "query": f"conversation_id:{conv_id}",
         "expansions": ["referenced_tweets.id.author_id", "in_reply_to_user_id"],
         "tweet_fields": ["in_reply_to_user_id"],
+        "max_results": 100,
     }
-    conversation = client.search_recent_tweets(**request_args)
+    try:
+        conversation = client.search_recent_tweets(**request_args)
+    except TooManyRequests:
+        print("Too many requests sent recently, waiting 15mn")
+        time.sleep(15 * 60)
+        conversation = client.search_recent_tweets(**request_args)
 
     conversation_data = []
     # list to store all conversation interactions -> later reverse it because twitter
     # api is in reversed chronological order
 
-    for conv in conversation.data:
-        conversation_data.append((conv["id"], conv["referenced_tweets"][0]["id"]))
-
-    while "next_token" in conversation.meta:
-        conversation = client.search_recent_tweets(
-            **request_args,
-            next_token=conversation.meta["next_token"],
-        )
-
+    try:
         for conv in conversation.data:
             conversation_data.append((conv["id"], conv["referenced_tweets"][0]["id"]))
+    except TypeError:
+        print(
+            "Conversation",
+            conv_id,
+            "has no data, maybe no one answered or the tweet was deleted.",
+        )
+        return conversation_data
+
+    while "next_token" in conversation.meta:
+        try:
+            conversation = client.search_recent_tweets(
+                **request_args,
+                next_token=conversation.meta["next_token"],
+            )
+        except TooManyRequests:
+            print("Too many requests sent recently, waiting 15mn")
+            time.sleep(15 * 60)
+
+        for conv in conversation.data:
+            conversation_data.append(
+                (conv["id"], conv["referenced_tweets"][0]["id"])
+            )
+
+    # Write in the cached data
+    json.dump(conversation_data, open(cached_data_file, "w"))
+
+    print(
+        f"Pulled",
+        len(conversation_data),
+        "tweets for conversation",
+        conv_id,
+    )
 
     return conversation_data[::-1]
 
@@ -160,18 +206,30 @@ def create_tree(conversation_id, conversation_data):
 if __name__ == "__main__":
     twitterclient = create_twitter_client()
 
-    dem_tweets, rep_tweets = get_legislator_tweets(twitterclient)
+    use_cached_tweets = "data/*_tweets_v0.json"
+    if use_cached_tweets is None:
+        dem_tweets, rep_tweets = get_legislator_tweets(twitterclient)
 
-    now = datetime.datetime.now().strftime("%Y_%m_%d_%Y_%I_%M%p")
+        now = datetime.datetime.now().strftime("%Y_%m_%d_%Y_%I_%M%p")
 
-    data_folder = Path("data/").mkdir(exist_ok=True)
+        data_folder = Path("data/").mkdir(exist_ok=True)
 
-    # Save this already collected data in json files
-    json.dump(dem_tweets, open(f"data/dem_tweets_{now}.json ", "w"))
-    json.dump(rep_tweets, open(f"data/rep_tweets_{now}.json ", "w"))
+        # Cache this already collected data in json files
+        json.dump(dem_tweets, open(f"data/dem_tweets_{now}.json", "w"))
+        json.dump(rep_tweets, open(f"data/rep_tweets_{now}.json", "w"))
+    else:
+        dem_tweets = json.load(open(glob(use_cached_tweets)[0], "r"))
+        # rep_tweets = json.load(open(glob(use_cached_tweets)[1], "r"))
 
     # Get the convo data from twitter and write it in a file
-    for tweet in dem_tweets:
+    for tweet_idx, tweet in enumerate(dem_tweets):
+        print(
+            "Getting conversation data for tweet",
+            tweet_idx,
+            "out of",
+            len(dem_tweets),
+            "tweets from democrats",
+        )
         tweet["conversation_data"] = get_conversation_data(
             tweet["conversation_id"], twitterclient
         )
