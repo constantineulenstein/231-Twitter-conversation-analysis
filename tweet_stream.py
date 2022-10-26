@@ -192,9 +192,9 @@ if __name__ == "__main__":
 
     # dem/rep_tweets_v1.json is the data from Tue 18 4:30pm to Tue 25 4:30pm
     # Not in the repo right now bcoz it's too big to be with the code
-    # Set this value to None if you want to re-pull tweets from the past 7 days
-    use_cached_tweets = None
-    if use_cached_tweets is None:
+    # Set this value to True if you want to re-pull tweets from the past 7 days
+    use_cached_tweets = False
+    if use_cached_tweets is True:
         dem_tweets, rep_tweets = get_legislator_tweets(twitterclient)
 
         now = datetime.datetime.now().strftime("%Y_%m_%d_%Y_%I_%M%p")
@@ -214,7 +214,7 @@ if __name__ == "__main__":
             "Getting conversation data for tweet",
             tweet_idx,
             "out of",
-            len(dem_tweets),
+            len(dem_tweets) - 1,
             "tweets from democrats",
         )
         tweet["conversation_data"] = get_conversation_data(
@@ -225,7 +225,7 @@ if __name__ == "__main__":
             "Getting conversation data for tweet",
             tweet_idx,
             "out of",
-            len(dem_tweets),
+            len(rep_tweets) - 1,
             "tweets from republicans",
         )
         tweet["conversation_data"] = get_conversation_data(
