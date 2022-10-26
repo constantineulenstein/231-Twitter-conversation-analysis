@@ -193,7 +193,7 @@ if __name__ == "__main__":
     # dem/rep_tweets_v1.json is the data from Tue 18 4:30pm to Tue 25 4:30pm
     # Not in the repo right now bcoz it's too big to be with the code
     # Set this value to None if you want to re-pull tweets from the past 7 days
-    use_cached_tweets = "data/*_tweets_v1.json"
+    use_cached_tweets = None
     if use_cached_tweets is None:
         dem_tweets, rep_tweets = get_legislator_tweets(twitterclient)
 
@@ -205,8 +205,8 @@ if __name__ == "__main__":
         json.dump(dem_tweets, open(f"data/dem_tweets_{now}.json", "w"))
         json.dump(rep_tweets, open(f"data/rep_tweets_{now}.json", "w"))
     else:
-        dem_tweets = json.load(open(glob(use_cached_tweets)[0], "r"))
-        rep_tweets = json.load(open(glob(use_cached_tweets)[1], "r"))
+        dem_tweets = json.load(open("data/dem_tweets_v2.json", "r"))
+        rep_tweets = json.load(open("data/rep_tweets_v2.json", "r"))
 
     # Get the convo data from twitter and write them in files
     for tweet_idx, tweet in enumerate(dem_tweets):
