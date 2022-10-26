@@ -187,6 +187,7 @@ def get_legislator_tweets(client):
     return democrat_tweets, republican_tweets
 
 
+# Move this to a new module ?
 def create_tree(conversation_id, conversation_data):
     """conversation_data should already be in the right chronological order"""
     tree = Tree()
@@ -208,9 +209,14 @@ def create_tree(conversation_id, conversation_data):
 
 
 if __name__ == "__main__":
+    # This code is necessary to populate data/ with tweets from republicans and
+    # dems, and to get the associated conversations
     twitterclient = create_twitter_client()
 
-    use_cached_tweets = "data/*_tweets_v0.json"
+    # dem/rep_tweets_v1.json is the data from Tue 18 4:30pm to Tue 25 4:30pm
+    # Not in the repo right now bcoz it's too big to be with the code
+    # Set this value to None if you want to re-pull tweets from the past 7 days
+    use_cached_tweets = "data/*_tweets_v1.json"
     if use_cached_tweets is None:
         dem_tweets, rep_tweets = get_legislator_tweets(twitterclient)
 
@@ -223,9 +229,9 @@ if __name__ == "__main__":
         json.dump(rep_tweets, open(f"data/rep_tweets_{now}.json", "w"))
     else:
         dem_tweets = json.load(open(glob(use_cached_tweets)[0], "r"))
-        # rep_tweets = json.load(open(glob(use_cached_tweets)[1], "r"))
+        rep_tweets = json.load(open(glob(use_cached_tweets)[1], "r"))
 
-    # Get the convo data from twitter and write it in a file
+    # Get the convo data from twitter and write them in files
     for tweet_idx, tweet in enumerate(dem_tweets):
         print(
             "Getting conversation data for tweet",
@@ -238,11 +244,24 @@ if __name__ == "__main__":
             tweet["conversation_id"], twitterclient
         )
     for tweet in rep_tweets:
+        print(
+            "Getting conversation data for tweet",
+            tweet_idx,
+            "out of",
+            len(dem_tweets),
+            "tweets from republicans",
+        )
         tweet["conversation_data"] = get_conversation_data(
             tweet["conversation_id"], twitterclient
         )
 
-    json.dump(dem_tweets, open(f"data/dem_tweets_with_convo_{now}.json ", "w"))
-    json.dump(rep_tweets, open(f"data/rep_tweets_with_convo_{now}.json ", "w"))
+    # Lines no longer necessary, it would just create bigass
+    # but the data is already pulled in several places rn
+    # Better would be to assemble the graphs / trees quickly in another
+    # module, and create a pickle file that contains metrics for each
+    # conversation (but not the whole convo data)
+    # ----
+    # json.dump(dem_tweets, open(f"data/dem_tweets_with_convo_{now}.json ", "w"))
+    # json.dump(rep_tweets, open(f"data/rep_tweets_with_convo_{now}.json ", "w"))
 
     # create_tree(conversation_id, conversation_data)
