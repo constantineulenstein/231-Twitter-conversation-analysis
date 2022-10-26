@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Collect tweets from Twitter streaming API via tweepy"""
-import sys
 import time
 import pandas as pd
 import json
 import datetime
-from treelib import Node, Tree
 from pathlib import Path
 from glob import glob
 
@@ -185,27 +183,6 @@ def get_legislator_tweets(client):
             republican_tweets += tweets
 
     return democrat_tweets, republican_tweets
-
-
-# Move this to a new module ?
-def create_tree(conversation_id, conversation_data):
-    """conversation_data should already be in the right chronological order"""
-    tree = Tree()
-    tree.create_node(conversation_id, conversation_id)  # Create Root Node
-
-    error_count = 0
-    for tree_datapoint in conversation_data:
-        try:
-            tree.create_node(
-                tree_datapoint[0], tree_datapoint[0], parent=tree_datapoint[1]
-            )
-        except:
-            error_count += 1
-    tree.show()
-    print(
-        f"Created Tree with {len(conversation_data) - error_count} replies. {error_count} replies were throwing "
-        f"an error due to deletions."
-    )
 
 
 if __name__ == "__main__":
