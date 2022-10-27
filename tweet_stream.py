@@ -31,7 +31,9 @@ def get_conversation_data(conv_id, client):
     Path("data/conversations").mkdir(exist_ok=True)
 
     # See if cached data exists and if so, return it
-    cached_data_file = Path(f"data/conversations/conversation_{conv_id}.json")
+    cached_data_file = Path(
+        f"data/conversations/conversation_with_authors_{conv_id}.json"
+    )
     if cached_data_file.exists():
         cached_data = json.load(open(cached_data_file, "r"))
         print(
@@ -45,8 +47,12 @@ def get_conversation_data(conv_id, client):
 
     request_args = {
         "query": f"conversation_id:{conv_id}",
-        "expansions": ["referenced_tweets.id.author_id", "in_reply_to_user_id"],
-        "tweet_fields": ["in_reply_to_user_id"],
+        "expansions": [
+            "author_id",
+            "referenced_tweets.id.author_id",
+            "in_reply_to_user_id",
+        ],
+        "tweet_fields": ["author_id", "in_reply_to_user_id"],
         "max_results": 100,
     }
     try:
@@ -62,7 +68,12 @@ def get_conversation_data(conv_id, client):
 
     try:
         for conv in conversation.data:
-            conversation_data.append((conv["id"], conv["referenced_tweets"][0]["id"]))
+            conversation_data.append(
+                (
+                    [conv["id"], conv["author_id"]],
+                    [conv["referenced_tweets"][0]["id"], conv["in_reply_to_user_id"]],
+                )
+            )
     except TypeError:
         print(
             "Conversation",
