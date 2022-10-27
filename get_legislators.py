@@ -7,7 +7,9 @@ import pickle
 with open("legislators-current.yaml", "r") as f:
     legs_current = pd.json_normalize(safe_load(f))
 
+
 party = pd.Series([row[-1]["party"] for row in legs_current["terms"]])
+
 legs_current = legs_current[
     ["name.official_full", "id.bioguide", "id.thomas", "id.govtrack"]
 ]
@@ -31,6 +33,7 @@ legs = pd.merge(
 )
 legs = legs.drop(["id.bioguide", "id.thomas", "id.govtrack"], axis=1)
 legs = legs[(legs.party == "Democrat") | (legs.party == "Republican")]
+
 
 legs.to_pickle("legislators")
 
