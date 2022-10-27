@@ -45,9 +45,13 @@ def create_tree_with_networkx(conversation_id, conversation_data):
 
     Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
     G0 = G.subgraph(Gcc[0])
-    print(f"structural virality is {nx.wiener_index(G0)/(G.number_of_nodes()*(G.number_of_nodes()-1))}")
+    structural_virality = nx.wiener_index(G0)/(G.number_of_nodes()*(G.number_of_nodes()-1))
+    print(f"structural virality is {structural_virality}")
     nx.draw(G0, node_size=3)
-    plt.savefig("test.png")
+    plt.savefig(f"graph_{conversation_id}.png")
+    pos = nx.nx_agraph.graphviz_layout(G, prog="dot", root=conversation_id)
+    nx.draw(G0, pos)
+    plt.savefig(f"graph_{conversation_id}.png")
 
 
 def create_graph(conversation_id, conversation_data, client):
@@ -80,7 +84,7 @@ def create_graph(conversation_id, conversation_data, client):
 
 
 if __name__ == "__main__":
-    twitterclient = create_twitter_client()
+    # twitterclient = create_twitter_client()
 
     tweets_f = open('data/dem_tweets_v2.json')
     tweets = json.load(tweets_f)
