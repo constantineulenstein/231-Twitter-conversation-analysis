@@ -91,7 +91,13 @@ def get_conversation_data(conv_id, client):
 
             for conv in conversation.data:
                 conversation_data.append(
-                    (conv["id"], conv["referenced_tweets"][0]["id"])
+                    (
+                        [conv["id"], conv["author_id"]],
+                        [
+                            conv["referenced_tweets"][0]["id"],
+                            conv["in_reply_to_user_id"],
+                        ],
+                    )
                 )
 
         except TooManyRequests:
