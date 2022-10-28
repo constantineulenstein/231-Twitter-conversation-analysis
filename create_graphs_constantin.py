@@ -63,10 +63,11 @@ if __name__ == "__main__":
     # simply do "+ json load(reps_file)" to concatenate the
     # lists and assemble all the trees at once
     # Load data from files
-    tweets = json.load(open("data/dem_tweets_v2.json"))
+    dem_tweets = json.load(open("data/dem_tweets_v2.json"))
+    rep_tweets = json.load(open("data/rep_tweets_v2.json"))
     convos_edges = {}
-
-    for tweet in tweets:
+    
+    def add_tweet_data(tweet, party):
         try:
             convos_edges[tweet["conversation_id"]] = (
                 json.load(
@@ -74,12 +75,19 @@ if __name__ == "__main__":
                         f"data/conversations/conversation_with_authors_{tweet['conversation_id']}.json"
                     )
                 ),
-                tweet["author_id"],  # Need to get this data from existing files
+                party,  # Need to get this data from existing files
             )
         except:
             print(
                 f"Conversation data for tweet {tweet['conversation_id']} is not present"
             )
+    
+    for tweet in dem_tweets:
+        add_tweet_data(tweet, "Democrat")
+    
+    for tweet in rep_tweets:
+        add_tweet_data(tweet, "Republican")
+    
 
     conversation_features = []
 
