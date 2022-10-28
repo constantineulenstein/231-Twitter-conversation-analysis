@@ -237,7 +237,7 @@ if __name__ == "__main__":
         tweet["conversation_data"] = get_conversation_data(
             tweet["conversation_id"], twitterclient
         )
-    for tweet in rep_tweets:
+    for tweet_idx, tweet in enumerate(rep_tweets):
         print(
             "Getting conversation data for tweet",
             tweet_idx,
