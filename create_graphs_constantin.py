@@ -13,14 +13,11 @@ def create_tree(conversation_id, conversation_data):
     tree.create_node(conversation_id, conversation_id)  # Create Root Node
 
     error_count = 0
-    og_reply_count = 0
     for tree_datapoint in conversation_data:
         try:
             tree.create_node(
                 tree_datapoint[0][0], tree_datapoint[0][0], parent=tree_datapoint[1][0]
             )
-            if tree_datapoint[0][0] == conversation_id:
-                og_reply_count += 1
         except:
             error_count += 1
 
@@ -30,16 +27,20 @@ def create_tree(conversation_id, conversation_data):
     )
     width = len(list(tree.filter_nodes(lambda x: tree.depth(x) == 1)))
 
-    return tree.depth(), tree.size(), width, og_reply_count
+    return tree.depth(), tree.size(), width
 
 
 def create_graph(conv_id, conversation_data, should_plot=False):
     """conversation_data should already be in the right chronological order"""
     G = nx.Graph()
-    unique_users = [conversation_data[0][1][1]]  # add OG user
+    og_auhor = conversation_data[0][1][1]
+    unique_users = [og_auhor]  # add OG user
+    og_reply_count = 0
     for graph_datapoint in conversation_data:
         G.add_edge(graph_datapoint[0][1], graph_datapoint[1][1])
         unique_users.append(graph_datapoint[0][1])
+        if graph_datapoint[0][1] == og_auhor:
+            og_reply_count += 1
 
     Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
     G = G.subgraph(Gcc[0])
@@ -52,7 +53,7 @@ def create_graph(conv_id, conversation_data, should_plot=False):
         plt.savefig(f"plots/graph_users_{conv_id}.png")
         plt.close()
 
-    return average_clustering, density, diameter, len(unique_users)
+    return average_clustering, density, diameter, len(unique_users), og_reply_count
 
 
 if __name__ == "__main__":
@@ -110,8 +111,8 @@ if __name__ == "__main__":
             len(edges),
             "edges",
         )
-        depth, size, width, og_reply_count = create_tree(conversation_id, edges[::-1])
-        average_clustering, density, diameter, unique_users = create_graph(
+        depth, size, width = create_tree(conversation_id, edges[::-1])
+        average_clustering, density, diameter, unique_users, og_reply_count = create_graph(
             conversation_id, edges[::-1]
         )
         conversation_features.append(

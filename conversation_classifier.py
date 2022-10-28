@@ -52,12 +52,14 @@ def generate_ccdf_plots(dems, reps, feature):
         return x, 1 - cusum / cusum[-1]
 
     x_dems, y_dems = _ccdf(dems)
-    x_dems = np.insert(x_dems, 0, x_dems[0])
-    y_dems = np.insert(y_dems, 0, 1.)
+    print(x_dems[0])
+    #x_dems = np.insert(x_dems, 0, 0.) #Add so plot always starts at 0
+    #y_dems = np.insert(y_dems, 0, 1.)
 
     x_reps, y_reps = _ccdf(reps)
-    x_reps = np.insert(x_reps, 0, x_reps[0])
-    y_reps = np.insert(y_reps, 0, 1.)
+    print(x_reps[0])
+    #x_reps = np.insert(x_reps, 0, 0.)
+    #y_reps = np.insert(y_reps, 0, 1.)
 
     plt.xscale("log")
     plt.yscale("log")
@@ -68,7 +70,7 @@ def generate_ccdf_plots(dems, reps, feature):
     plt.ylabel("CCDF (%)")
     current_values = plt.gca().get_yticks()
     plt.gca().set_yticklabels(['{:,.2%}'.format(x) for x in current_values])
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.show()
 
 
@@ -86,12 +88,13 @@ def plot_distribution(X, y, feature_name_dict, feature):
 
 
 if __name__ == "__main__":
-    plot_distributions = False
-    data = json.load(open("conversation_metrics_v2.json"))
+    plot_distributions = True
+    data = json.load(open("conversation_metrics_temp.json"))
     feature_name_dict = {
         name: idx for idx, name in enumerate(list(data[0].keys())[2:])
     }
     X, y = create_dataset(data)
+
 
     if plot_distributions:
         for feature in feature_name_dict.keys():
