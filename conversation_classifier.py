@@ -7,8 +7,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import permutation_importance
 import json
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 import scipy
-
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.inspection import DecisionBoundaryDisplay
 
 def create_dataset(data, cutoff_size):
     X = []
@@ -87,7 +98,7 @@ def plot_distribution(X, y, feature_name_dict, feature):
 
 
 if __name__ == "__main__":
-    plot_distributions = True
+    plot_distributions = False
     cutoff_size = 5
     data = json.load(open("conversation_metrics_temp.json"))
     feature_name_dict = {
@@ -97,7 +108,6 @@ if __name__ == "__main__":
     print(f"The dataset contains {len(y[y=='Democrat'])} conversations of Democrats and {len(y[y=='Republican'])} "
           f"conversations of Republicans.")
 
-
     if plot_distributions:
         for feature in feature_name_dict.keys():
             print(feature)
@@ -105,14 +115,43 @@ if __name__ == "__main__":
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 
-    model = svm.SVC(C=2)
+    # model = svm.SVC(C=1)
     # model = LogisticRegression(random_state=0)
-    scaler = preprocessing.StandardScaler()
-    clf = make_pipeline(scaler, model)
-    stratified_kFold(X_train, y_train, clf)
-    print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
+    # model = RandomForestClassifier(max_depth=5, random_state=0)
+    # model = MLPClassifier(random_state=1, max_iter=1000)
 
-    # DONT FORGET TO SCALE TEST SET PRIOR TO EVALUATING
+    names = [
+        "Nearest Neighbors",
+        "Linear SVM",
+        "RBF SVM",
+        "Decision Tree",
+        "Random Forest",
+        "Neural Net",
+        "AdaBoost",
+        "Naive Bayes",
+    ]
+
+    classifiers = [
+        KNeighborsClassifier(3),
+        SVC(kernel="linear", C=0.025),
+        SVC(gamma=2, C=1),
+        DecisionTreeClassifier(max_depth=5),
+        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+        MLPClassifier(alpha=1, max_iter=1000),
+        AdaBoostClassifier(),
+        GaussianNB(),
+    ]
+
+    for i, model in enumerate(classifiers):
+        print("\n\n", names[i])
+        scaler = preprocessing.StandardScaler()
+        clf = make_pipeline(scaler, model)
+        stratified_kFold(X_train, y_train, clf)
+        print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
+
+        clf.fit(X_train, y_train)
+        print(f"\n The accuracy on final test set is {clf.score(X_test, y_test) * 100} %")
+
 
 """
 r = permutation_importance(model, X_val, y_val,
