@@ -33,7 +33,7 @@ def create_tree(conversation_id, conversation_data):
     return tree.depth(), tree.size(), width, og_reply_count
 
 
-def create_graph(conv_id, conversation_data):
+def create_graph(conv_id, conversation_data, should_plot=False):
     """conversation_data should already be in the right chronological order"""
     G = nx.Graph()
     unique_users = [conversation_data[0][1][1]]  # add OG user
@@ -43,19 +43,16 @@ def create_graph(conv_id, conversation_data):
 
     Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
     G = G.subgraph(Gcc[0])
-    structural_virality = (
-        nx.wiener_index(G) / (G.number_of_nodes() * (G.number_of_nodes() - 1))
-        if G.number_of_nodes() > 1
-        else 0
-    )
+    average_clustering = nx.approximation.average_clustering(G)
     density = nx.classes.function.density(G)
-    diameter = nx.diameter(G)
+    diameter = nx.approximation.diameter(G)
     unique_users = np.unique(unique_users)
-    nx.draw(G, node_size=2)
-    plt.savefig(f"plots/graph_users_{conv_id}.png")
-    plt.close()
+    if should_plot:
+        nx.draw(G, node_size=2)
+        plt.savefig(f"plots/graph_users_{conv_id}.png")
+        plt.close()
 
-    return structural_virality, density, diameter, len(unique_users)
+    return average_clustering, density, diameter, len(unique_users)
 
 
 if __name__ == "__main__":
@@ -65,29 +62,30 @@ if __name__ == "__main__":
     # Load data from files
     dem_tweets = json.load(open("data/dem_tweets_v2.json"))
     rep_tweets = json.load(open("data/rep_tweets_v2.json"))
-    convos_edges = {}
-    
+    convos_edges = []
+
     def add_tweet_data(tweet, party):
         try:
-            convos_edges[tweet["conversation_id"]] = (
+            convo_data = (
+                tweet["conversation_id"],
                 json.load(
                     open(
                         f"data/conversations/conversation_with_authors_{tweet['conversation_id']}.json"
                     )
                 ),
-                party,  # Need to get this data from existing files
+                party,
             )
+            convos_edges.append(convo_data)
         except:
             print(
-                f"Conversation data for tweet {tweet['conversation_id']} is not present"
+                f"Conversation data for tweet {tweet['conversation_id']} is not present, maybe tweet was deleted and so no data pulled ?"
             )
-    
+
     for tweet in dem_tweets:
         add_tweet_data(tweet, "Democrat")
-    
+
     for tweet in rep_tweets:
         add_tweet_data(tweet, "Republican")
-    
 
     conversation_features = []
 
@@ -95,15 +93,15 @@ if __name__ == "__main__":
 
     Path("plots/").mkdir(exist_ok=True)
 
+    convos_edges.sort(key=lambda c: len(c[1]))
+
     # For each conversation, assemble the tree and return some metrics
     # Maybe here we should also print the plots? Although that might
     # take a lot of space. Maybe we could create a list of how many
     # nodes they have, then we sort it, and then we'll plot the 10
     # biggest democrats and 10 biggest republicans trees / graphs
     # For now it's pretty straightforward, we only compute the depth here
-    for conv_idx, (conversation_id, (edges, author_id)) in enumerate(
-        convos_edges.items()
-    ):
+    for conv_idx, (conversation_id, edges, author_id) in enumerate(convos_edges[::-1]):
         print(f"{conv_idx} out of {len(convos_edges)}")
         print(
             "Creating tree / graph for conversation",
@@ -113,7 +111,7 @@ if __name__ == "__main__":
             "edges",
         )
         depth, size, width, og_reply_count = create_tree(conversation_id, edges[::-1])
-        structural_virality, density, diameter, unique_users = create_graph(
+        average_clustering, density, diameter, unique_users = create_graph(
             conversation_id, edges[::-1]
         )
         conversation_features.append(
@@ -123,7 +121,7 @@ if __name__ == "__main__":
                 "depth": depth,
                 "size": size,
                 "width": width,
-                "structural_virality": structural_virality,
+                "average_clustering": average_clustering,
                 "density": density,
                 "diameter": diameter,
                 "reply_count": og_reply_count,
@@ -131,8 +129,8 @@ if __name__ == "__main__":
             }
         )
 
-    # For now as json but maybe we could do .csv or pickle
-    json.dump(conversation_features, open("conversation_metrics.json", "w"))
+        # For now as json but maybe we could do .csv or pickle
+        json.dump(conversation_features, open("conversation_metrics_temp.json", "w"))
 
 
 # Ideas: Investigate how often OG replies to tweets -> might be sign for democrat or Rep
