@@ -6,15 +6,20 @@ from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import permutation_importance
 import json
+import matplotlib.pyplot as plt
+import scipy
 
 
 def create_dataset(data):
     X = []
     y = []
+    feature_names = [feature for feature in data[0].keys()][2:]
     for datapoint in data:
-        X.append([datapoint["depth"], datapoint["size"], datapoint["width"], datapoint["structural_virality"],
-                  datapoint["density"], datapoint["diameter"], datapoint["reply_count"], datapoint["unique_users"]])
+        X.append([datapoint[feature] for feature in feature_names])
         y.append(datapoint["author_id"])
+        # X.append([datapoint["depth"], datapoint["size"], datapoint["width"], datapoint["structural_virality"],
+        #          datapoint["density"], datapoint["diameter"], datapoint["reply_count"], datapoint["unique_users"]])
+        # y.append(datapoint["author_id"])
     X = np.array(X)
     y = np.array(y)
     return X, y
@@ -40,23 +45,67 @@ def stratified_kFold(X, y, clf):
     print('\nStandard Deviation is:', np.std(lst_accu_stratified))
 
 
+def generate_ccdf_plots(dems, reps, feature):
+    def _ccdf(a):
+        x, counts = np.unique(a, return_counts=True)
+        cusum = np.cumsum(counts)
+        return x, 1 - cusum / cusum[-1]
+
+    x_dems, y_dems = _ccdf(dems)
+    x_dems = np.insert(x_dems, 0, x_dems[0])
+    y_dems = np.insert(y_dems, 0, 1.)
+
+    x_reps, y_reps = _ccdf(reps)
+    x_reps = np.insert(x_reps, 0, x_reps[0])
+    y_reps = np.insert(y_reps, 0, 1.)
+
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.plot(x_dems, y_dems, drawstyle='steps-post', label="Dems")
+    plt.plot(x_reps, y_reps, drawstyle='steps-post', label="Reps")
+    plt.legend()
+    plt.xlabel(f"{feature}")
+    plt.ylabel("CCDF (%)")
+    current_values = plt.gca().get_yticks()
+    plt.gca().set_yticklabels(['{:,.2%}'.format(x) for x in current_values])
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_distribution(X, y, feature_name_dict, feature):
+    values = X[:, feature_name_dict[feature]]
+    dem_idx = np.argwhere(y == "Democrat")
+    rep_idx = np.argwhere(y == "Republican")
+    dem_values = values[dem_idx]
+    rep_values = values[rep_idx]
+
+    dem_values = np.sort(dem_values.flatten())
+    rep_values = np.sort(rep_values.flatten())
+
+    generate_ccdf_plots(dem_values, rep_values, feature)
+
+
 if __name__ == "__main__":
-    data = json.load(open("conversation_metrics.json"))
+    plot_distributions = False
+    data = json.load(open("conversation_metrics_v2.json"))
+    feature_name_dict = {
+        name: idx for idx, name in enumerate(list(data[0].keys())[2:])
+    }
     X, y = create_dataset(data)
+
+    if plot_distributions:
+        for feature in feature_name_dict.keys():
+            print(feature)
+            plot_distribution(X, y, feature_name_dict, feature)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 
-    #model = svm.SVC(C=1)
-    model = LogisticRegression(random_state=0)
+    model = svm.SVC(C=2)
+    # model = LogisticRegression(random_state=0)
     scaler = preprocessing.StandardScaler()
     clf = make_pipeline(scaler, model)
     stratified_kFold(X_train, y_train, clf)
-    print(f"\nThe share in Democrats is {sum((y == 'Democrat'))/len(y)}")
-
-
-
-
-
+    print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
 
     # DONT FORGET TO SCALE TEST SET PRIOR TO EVALUATING
 
@@ -70,7 +119,3 @@ for i in r.importances_mean.argsort()[::-1]:
               f"{r.importances_mean[i]:.3f}"
               f" +/- {r.importances_std[i]:.3f}")
 """
-
-
-
-
