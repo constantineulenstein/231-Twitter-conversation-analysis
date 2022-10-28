@@ -10,13 +10,14 @@ import matplotlib.pyplot as plt
 import scipy
 
 
-def create_dataset(data):
+def create_dataset(data, cutoff_size):
     X = []
     y = []
     feature_names = [feature for feature in data[0].keys()][2:]
     for datapoint in data:
-        X.append([datapoint[feature] for feature in feature_names])
-        y.append(datapoint["author_id"])
+        if datapoint["size"] >= cutoff_size:
+            X.append([datapoint[feature] for feature in feature_names])
+            y.append(datapoint["author_id"])
         # X.append([datapoint["depth"], datapoint["size"], datapoint["width"], datapoint["structural_virality"],
         #          datapoint["density"], datapoint["diameter"], datapoint["reply_count"], datapoint["unique_users"]])
         # y.append(datapoint["author_id"])
@@ -52,12 +53,10 @@ def generate_ccdf_plots(dems, reps, feature):
         return x, 1 - cusum / cusum[-1]
 
     x_dems, y_dems = _ccdf(dems)
-    print(x_dems[0])
     #x_dems = np.insert(x_dems, 0, 0.) #Add so plot always starts at 0
     #y_dems = np.insert(y_dems, 0, 1.)
 
     x_reps, y_reps = _ccdf(reps)
-    print(x_reps[0])
     #x_reps = np.insert(x_reps, 0, 0.)
     #y_reps = np.insert(y_reps, 0, 1.)
 
@@ -89,11 +88,14 @@ def plot_distribution(X, y, feature_name_dict, feature):
 
 if __name__ == "__main__":
     plot_distributions = True
+    cutoff_size = 5
     data = json.load(open("conversation_metrics_temp.json"))
     feature_name_dict = {
         name: idx for idx, name in enumerate(list(data[0].keys())[2:])
     }
-    X, y = create_dataset(data)
+    X, y = create_dataset(data, cutoff_size)
+    print(f"The dataset contains {len(y[y=='Democrat'])} conversations of Democrats and {len(y[y=='Republican'])} "
+          f"conversations of Republicans.")
 
 
     if plot_distributions:

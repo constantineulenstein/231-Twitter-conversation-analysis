@@ -63,6 +63,7 @@ if __name__ == "__main__":
     # Load data from files
     dem_tweets = json.load(open("data/dem_tweets_v2.json"))
     rep_tweets = json.load(open("data/rep_tweets_v2.json"))
+
     convos_edges = []
 
     def add_tweet_data(tweet, party):
