@@ -43,8 +43,10 @@ def create_graph(conv_id, conversation_data):
 
     Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
     G = G.subgraph(Gcc[0])
-    structural_virality = nx.wiener_index(G) / (
-        G.number_of_nodes() * (G.number_of_nodes() - 1)
+    structural_virality = (
+        nx.wiener_index(G) / (G.number_of_nodes() * (G.number_of_nodes() - 1))
+        if G.number_of_nodes() > 1
+        else 0
     )
     density = nx.classes.function.density(G)
     diameter = nx.diameter(G)
@@ -94,8 +96,6 @@ if __name__ == "__main__":
     for conv_idx, (conversation_id, (edges, author_id)) in enumerate(
         convos_edges.items()
     ):
-        if conv_idx == 100:
-            break
         print(f"{conv_idx} out of {len(convos_edges)}")
         print(
             "Creating tree / graph for conversation",
