@@ -5,6 +5,8 @@ import networkx as nx
 import json
 import numpy as np
 
+from tweet_stream import create_twitter_client
+
 
 # Move this to a new module ?
 def create_tree(conversation_id, conversation_data):
@@ -66,6 +68,9 @@ if __name__ == "__main__":
 
     convos_edges = []
 
+    twitterclient = create_twitter_client()
+
+
     def add_tweet_data(tweet, party):
         try:
             convo_data = (
@@ -76,6 +81,8 @@ if __name__ == "__main__":
                     )
                 ),
                 party,
+                print(twitterclient.get_user(id=tweet["author_id"], user_fields=["public_metrics"]).data[
+                          "public_metrics"]["followers_count"]),
             )
             convos_edges.append(convo_data)
         except:
@@ -103,7 +110,7 @@ if __name__ == "__main__":
     # nodes they have, then we sort it, and then we'll plot the 10
     # biggest democrats and 10 biggest republicans trees / graphs
     # For now it's pretty straightforward, we only compute the depth here
-    for conv_idx, (conversation_id, edges, author_id) in enumerate(convos_edges[::-1]):
+    for conv_idx, (conversation_id, edges, author_id, follower_count) in enumerate(convos_edges[::-1]):
         print(f"{conv_idx} out of {len(convos_edges)}")
         print(
             "Creating tree / graph for conversation",
@@ -128,6 +135,7 @@ if __name__ == "__main__":
                 "diameter": diameter,
                 "reply_count": og_reply_count,
                 "unique_users": unique_users,
+                "follower_count": follower_count,
             }
         )
 
