@@ -36,6 +36,7 @@ def create_graph(conv_id, conversation_data):
 
     nx.draw(G, node_size=2)
     plt.savefig(f"plots/graph_users_{conv_id}.png")
+    plt.close()
 
 
 if __name__ == "__main__":
