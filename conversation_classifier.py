@@ -100,7 +100,7 @@ def plot_distribution(X, y, feature_name_dict, feature):
 if __name__ == "__main__":
     plot_distributions = False
     cutoff_size = 5
-    data = json.load(open("conversation_metrics_temp.json"))
+    data = json.load(open("conversation_metrics_v2.json"))
     feature_name_dict = {
         name: idx for idx, name in enumerate(list(data[0].keys())[2:])
     }

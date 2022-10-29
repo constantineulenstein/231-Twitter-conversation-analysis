@@ -81,8 +81,8 @@ if __name__ == "__main__":
                     )
                 ),
                 party,
-                print(twitterclient.get_user(id=tweet["author_id"], user_fields=["public_metrics"]).data[
-                          "public_metrics"]["followers_count"]),
+                twitterclient.get_user(id=tweet["author_id"], user_fields=["public_metrics"]).data[
+                          "public_metrics"]["followers_count"],
             )
             convos_edges.append(convo_data)
         except:
