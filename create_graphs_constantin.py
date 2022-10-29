@@ -1,9 +1,11 @@
 from pathlib import Path
+from time import sleep
 from matplotlib import pyplot as plt
 from treelib import Node, Tree
 import networkx as nx
 import json
 import numpy as np
+import tweepy
 
 from tweet_stream import create_twitter_client
 
@@ -66,10 +68,39 @@ if __name__ == "__main__":
     dem_tweets = json.load(open("data/dem_tweets_v2.json"))
     rep_tweets = json.load(open("data/rep_tweets_v2.json"))
 
-    convos_edges = []
-
     twitterclient = create_twitter_client()
 
+    if Path("data/followers_counts.json").exists():
+        print("Loading followers counts in memory")
+        followers_counts = json.load(open("data/followers_counts.json"))
+    else:
+        followers_counts = {}
+        for tweet in dem_tweets + rep_tweets:
+            # We had forgotten to retrieve followers_count, so that had to be done here
+            if tweet["author_id"] in followers_counts:
+                continue
+            try:
+                followers_count = (
+                    twitterclient.get_user(
+                        id=tweet["author_id"], user_fields=["public_metrics"]
+                    ).data["public_metrics"]["followers_count"],
+                )
+            except tweepy.TooManyRequests:
+                print("Too Many Requests, I sleeps for 15mn")
+                sleep(15 * 60)
+                followers_count = (
+                    twitterclient.get_user(
+                        id=tweet["author_id"], user_fields=["public_metrics"]
+                    ).data["public_metrics"]["followers_count"],
+                )
+
+            print(
+                f"Pulled for {tweet['full_name']} ({tweet['author_id']}): {followers_count} followers."
+            )
+            followers_counts[tweet["author_id"]] = followers_count
+        json.dump(followers_counts, open("data/followers_counts.json", "w"))
+
+    convos_edges = []
 
     def add_tweet_data(tweet, party):
         try:
@@ -81,13 +112,13 @@ if __name__ == "__main__":
                     )
                 ),
                 party,
-                twitterclient.get_user(id=tweet["author_id"], user_fields=["public_metrics"]).data[
-                          "public_metrics"]["followers_count"],
+                followers_counts[str(tweet["author_id"])][0],
             )
             convos_edges.append(convo_data)
-        except:
+        except Exception as e:
             print(
-                f"Conversation data for tweet {tweet['conversation_id']} is not present, maybe tweet was deleted and so no data pulled ?"
+                f"Conversation data for tweet {tweet['conversation_id']} is not present,"
+                " maybe tweet was deleted and so no data pulled ?"
             )
 
     for tweet in dem_tweets:
@@ -110,7 +141,9 @@ if __name__ == "__main__":
     # nodes they have, then we sort it, and then we'll plot the 10
     # biggest democrats and 10 biggest republicans trees / graphs
     # For now it's pretty straightforward, we only compute the depth here
-    for conv_idx, (conversation_id, edges, author_id, follower_count) in enumerate(convos_edges[::-1]):
+    for conv_idx, (conversation_id, edges, party, follower_count) in enumerate(
+        convos_edges[::-1]
+    ):
         print(f"{conv_idx} out of {len(convos_edges)}")
         print(
             "Creating tree / graph for conversation",
@@ -120,13 +153,17 @@ if __name__ == "__main__":
             "edges",
         )
         depth, size, width = create_tree(conversation_id, edges[::-1])
-        average_clustering, density, diameter, unique_users, og_reply_count = create_graph(
-            conversation_id, edges[::-1]
-        )
+        (
+            average_clustering,
+            density,
+            diameter,
+            unique_users,
+            og_reply_count,
+        ) = create_graph(conversation_id, edges[::-1])
         conversation_features.append(
             {
                 "conversation_id": conversation_id,
-                "author_id": author_id,
+                "party": party,
                 "depth": depth,
                 "size": size,
                 "width": width,
@@ -140,7 +177,7 @@ if __name__ == "__main__":
         )
 
         # For now as json but maybe we could do .csv or pickle
-        json.dump(conversation_features, open("conversation_metrics_temp.json", "w"))
+        json.dump(conversation_features, open("conversation_metrics_v2.json", "w"))
 
 
 # Ideas: Investigate how often OG replies to tweets -> might be sign for democrat or Rep

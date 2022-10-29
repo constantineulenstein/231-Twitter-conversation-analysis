@@ -248,14 +248,3 @@ if __name__ == "__main__":
         tweet["conversation_data"] = get_conversation_data(
             tweet["conversation_id"], twitterclient
         )
-
-    # Lines no longer necessary, it would just create bigass
-    # but the data is already pulled in several places rn
-    # Better would be to assemble the graphs / trees quickly in another
-    # module, and create a pickle file that contains metrics for each
-    # conversation (but not the whole convo data)
-    # ----
-    # json.dump(dem_tweets, open(f"data/dem_tweets_with_convo_{now}.json ", "w"))
-    # json.dump(rep_tweets, open(f"data/rep_tweets_with_convo_{now}.json ", "w"))
-
-    # create_tree(conversation_id, conversation_data)
