@@ -34,24 +34,40 @@ def create_tree(conversation_id, conversation_data):
     return tree.depth(), tree.size(), width
 
 
-def create_graph(conv_id, conversation_data, should_plot=False):
+def create_graph(conv_id, conversation_data, is_directed=False, should_plot=False):
     """conversation_data should already be in the right chronological order"""
-    G = nx.Graph()
-    og_auhor = conversation_data[0][1][1]
-    unique_users = [og_auhor]  # add OG user
+    G = nx.DiGraph() if is_directed else nx.Graph()
+
+    og_author = conversation_data[0][1][1]
+    unique_users = [og_author]
     og_reply_count = 0
-    for graph_datapoint in conversation_data:
-        G.add_edge(graph_datapoint[0][1], graph_datapoint[1][1])
-        unique_users.append(graph_datapoint[0][1])
-        if graph_datapoint[0][1] == og_auhor:
+
+    for ((_, author_id), (_, replier_id)) in conversation_data:
+        G.add_edge(author_id, replier_id)
+        unique_users.append(author_id)
+        if author_id == og_author:
             og_reply_count += 1
 
-    Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
+    Gcc = sorted(
+        nx.weakly_connected_components(G)
+        if G.is_directed()
+        else nx.connected_components(G),
+        key=len,
+        reverse=True,
+    )
     G = G.subgraph(Gcc[0])
-    average_clustering = nx.approximation.average_clustering(G)
-    density = nx.classes.function.density(G)
-    diameter = nx.approximation.diameter(G)
+
     unique_users = np.unique(unique_users)
+
+    trials_to_do = max(1000, 4 * len(conversation_data))
+    average_clustering = (
+        None
+        if G.is_directed()
+        else nx.approximation.average_clustering(G, trials=trials_to_do)
+    )
+    density = nx.classes.function.density(G)
+    diameter = None if G.is_directed() else nx.approximation.diameter(G)
+
     if should_plot:
         nx.draw(G, node_size=2)
         plt.savefig(f"plots/graph_users_{conv_id}.png")
@@ -60,14 +76,7 @@ def create_graph(conv_id, conversation_data, should_plot=False):
     return average_clustering, density, diameter, len(unique_users), og_reply_count
 
 
-if __name__ == "__main__":
-    # For now only with dem tweets, when we have reps we can
-    # simply do "+ json load(reps_file)" to concatenate the
-    # lists and assemble all the trees at once
-    # Load data from files
-    dem_tweets = json.load(open("data/dem_tweets_v2.json"))
-    rep_tweets = json.load(open("data/rep_tweets_v2.json"))
-
+def compile_graph_data(dem_tweets, rep_tweets):
     twitterclient = create_twitter_client()
 
     if Path("data/followers_counts.json").exists():
@@ -127,20 +136,26 @@ if __name__ == "__main__":
     for tweet in rep_tweets:
         add_tweet_data(tweet, "Republican")
 
+    return convos_edges
+
+
+if __name__ == "__main__":
+    output_file_name = "conversation_metrics_v3.json"
+    # Set to true to observe if our computations of average_clustering are precise
+    should_compute_approximation_metrics = False
+
+    dem_tweets = json.load(open("data/dem_tweets_v2.json"))
+    rep_tweets = json.load(open("data/rep_tweets_v2.json"))
+
+    convos_edges = compile_graph_data(dem_tweets, rep_tweets)
+
+    print("Loaded the conversations data in memory.")
+
     conversation_features = []
-
-    print("Loaded the conversations data in memory correctly.")
-
     Path("plots/").mkdir(exist_ok=True)
 
-    convos_edges.sort(key=lambda c: len(c[1]))
+    convos_edges.sort(key=lambda c: len(c[1]))  # Sort by edges count
 
-    # For each conversation, assemble the tree and return some metrics
-    # Maybe here we should also print the plots? Although that might
-    # take a lot of space. Maybe we could create a list of how many
-    # nodes they have, then we sort it, and then we'll plot the 10
-    # biggest democrats and 10 biggest republicans trees / graphs
-    # For now it's pretty straightforward, we only compute the depth here
     for conv_idx, (conversation_id, edges, party, follower_count) in enumerate(
         convos_edges[::-1]
     ):
@@ -160,6 +175,26 @@ if __name__ == "__main__":
             unique_users,
             og_reply_count,
         ) = create_graph(conversation_id, edges[::-1])
+
+        if should_compute_approximation_metrics:
+            clusterings = []
+            for _ in range(10):
+                (
+                    average_clustering,
+                    density,
+                    diameter,
+                    unique_users,
+                    og_reply_count,
+                ) = create_graph(conversation_id, edges[::-1])
+                clusterings.append(average_clustering)
+
+            print(
+                np.mean(clusterings),
+                np.std(clusterings),
+                np.std(clusterings) / np.mean(clusterings),
+            )
+            average_clustering = np.mean(clusterings)
+
         conversation_features.append(
             {
                 "conversation_id": conversation_id,
@@ -176,8 +211,10 @@ if __name__ == "__main__":
             }
         )
 
-        # For now as json but maybe we could do .csv or pickle
-        json.dump(conversation_features, open("conversation_metrics_v2.json", "w"))
+        if conv_idx - 1 % 100 == 0:
+            json.dump(conversation_features, open(output_file_name, "w"))
+
+    json.dump(conversation_features, open(output_file_name, "w"))
 
 
 # Ideas: Investigate how often OG replies to tweets -> might be sign for democrat or Rep
