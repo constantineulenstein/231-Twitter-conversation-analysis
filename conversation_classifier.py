@@ -1,25 +1,17 @@
 import numpy as np
-from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn import preprocessing
 from sklearn.pipeline import make_pipeline
-from sklearn import svm
-from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import permutation_importance
 import json
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neural_network import MLPClassifier
-import scipy
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.inspection import DecisionBoundaryDisplay
+
 
 def create_dataset(data, cutoff_size):
     X = []
@@ -37,7 +29,7 @@ def create_dataset(data, cutoff_size):
     return X, y
 
 
-def stratified_kFold(X, y, clf):
+def stratified_kFold(X, y, clf, verbose):
     skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
     lst_accu_stratified = []
 
@@ -47,14 +39,17 @@ def stratified_kFold(X, y, clf):
         clf.fit(X_train_fold, y_train_fold)
         lst_accu_stratified.append(clf.score(X_test_fold, y_test_fold))
 
-    print('List of possible accuracy:', lst_accu_stratified)
-    print('\nMaximum Accuracy That can be obtained from this model is:',
-          max(lst_accu_stratified) * 100, '%')
-    print('\nMinimum Accuracy:',
-          min(lst_accu_stratified) * 100, '%')
-    print('\nOverall Accuracy:',
-          np.mean(lst_accu_stratified) * 100, '%')
-    print('\nStandard Deviation is:', np.std(lst_accu_stratified))
+    if verbose:
+        print('List of possible accuracy:', lst_accu_stratified)
+        print('\nMaximum Accuracy That can be obtained from this model is:',
+              max(lst_accu_stratified) * 100, '%')
+        print('\nMinimum Accuracy:',
+              min(lst_accu_stratified) * 100, '%')
+        print('\nOverall Accuracy:',
+              np.mean(lst_accu_stratified) * 100, '%')
+        print('\nStandard Deviation is:', np.std(lst_accu_stratified))
+
+    return np.mean(lst_accu_stratified)
 
 
 def generate_ccdf_plots(dems, reps, feature):
@@ -64,12 +59,12 @@ def generate_ccdf_plots(dems, reps, feature):
         return x, 1 - cusum / cusum[-1]
 
     x_dems, y_dems = _ccdf(dems)
-    #x_dems = np.insert(x_dems, 0, 0.) #Add so plot always starts at 0
-    #y_dems = np.insert(y_dems, 0, 1.)
+    # x_dems = np.insert(x_dems, 0, 0.) #Add so plot always starts at 0
+    # y_dems = np.insert(y_dems, 0, 1.)
 
     x_reps, y_reps = _ccdf(reps)
-    #x_reps = np.insert(x_reps, 0, 0.)
-    #y_reps = np.insert(y_reps, 0, 1.)
+    # x_reps = np.insert(x_reps, 0, 0.)
+    # y_reps = np.insert(y_reps, 0, 1.)
 
     plt.xscale("log")
     plt.yscale("log")
@@ -80,7 +75,7 @@ def generate_ccdf_plots(dems, reps, feature):
     plt.ylabel("CCDF (%)")
     current_values = plt.gca().get_yticks()
     plt.gca().set_yticklabels(['{:,.2%}'.format(x) for x in current_values])
-    #plt.tight_layout()
+    # plt.tight_layout()
     plt.show()
 
 
@@ -105,7 +100,7 @@ if __name__ == "__main__":
         name: idx for idx, name in enumerate(list(data[0].keys())[2:])
     }
     X, y = create_dataset(data, cutoff_size)
-    print(f"The dataset contains {len(y[y=='Democrat'])} conversations of Democrats and {len(y[y=='Republican'])} "
+    print(f"The dataset contains {len(y[y == 'Democrat'])} conversations of Democrats and {len(y[y == 'Republican'])} "
           f"conversations of Republicans.")
 
     if plot_distributions:
@@ -114,11 +109,6 @@ if __name__ == "__main__":
             plot_distribution(X, y, feature_name_dict, feature)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-
-    # model = svm.SVC(C=1)
-    # model = LogisticRegression(random_state=0)
-    # model = RandomForestClassifier(max_depth=5, random_state=0)
-    # model = MLPClassifier(random_state=1, max_iter=1000)
 
     names = [
         "Nearest Neighbors",
@@ -142,24 +132,27 @@ if __name__ == "__main__":
         GaussianNB(),
     ]
 
+    model_accs = {}
     for i, model in enumerate(classifiers):
-        print("\n\n", names[i])
         scaler = preprocessing.StandardScaler()
         clf = make_pipeline(scaler, model)
-        stratified_kFold(X_train, y_train, clf)
-        print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
+        acc = stratified_kFold(X_train, y_train, clf, verbose=False)
+        model_accs[names[i]] = acc
 
-        clf.fit(X_train, y_train)
-        print(f"\n The accuracy on final test set is {clf.score(X_test, y_test) * 100} %")
+    print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
+    print(f"\nModel accuracies are: \n", model_accs)
 
+    best_model = max(model_accs, key=model_accs.get)
+    print(f"Best model is {best_model} with following metrics: \n")
 
-"""
-r = permutation_importance(model, X_val, y_val,
-                           n_repeats=30,
-                           random_state=0)
-for i in r.importances_mean.argsort()[::-1]:
-    if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
-        print(f"{diabetes.feature_names[i]:<8}"
+    scaler = preprocessing.StandardScaler()
+    clf = make_pipeline(scaler, classifiers[names.index(best_model)])
+    acc = stratified_kFold(X_train, y_train, clf, verbose=True)
+    clf.fit(X_train, y_train)
+    print(f"\n The accuracy on final test set is {clf.score(X_test, y_test) * 100} %")
+
+    r = permutation_importance(clf, X_test, y_test, n_repeats=30, random_state=0)
+    for i in r.importances_mean.argsort()[::-1]:
+        print(f"{[feature for feature in feature_name_dict if feature_name_dict[feature] == i][0]}: "
               f"{r.importances_mean[i]:.3f}"
               f" +/- {r.importances_std[i]:.3f}")
-"""
