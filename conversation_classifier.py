@@ -14,11 +14,11 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
 
 
-def create_dataset(data, cutoff_size, feature_names):
+def create_dataset(data, cutoff_size, cutoff_max, feature_names):
     X = []
     y = []
     for datapoint in data:
-        if datapoint["size"] >= cutoff_size:
+        if datapoint["size"] >= cutoff_size and datapoint["size"] <= cutoff_max:
             X.append([datapoint[feature] for feature in feature_names])
             y.append(datapoint["party"])
         # X.append([datapoint["depth"], datapoint["size"], datapoint["width"], datapoint["structural_virality"],
@@ -152,7 +152,7 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
     scaler = preprocessing.StandardScaler()
     model = classifiers[names.index(best_model)]
     clf = make_pipeline(scaler, model)
-    acc = stratified_kFold(X_train, y_train, clf, verbose=True)
+    _ = stratified_kFold(X_train, y_train, clf, verbose=True)
     clf.fit(X_train, y_train)
     print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
     print(
@@ -161,7 +161,7 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
         f"%, the accuracy on final test set "
         f"for Republicans is {clf.score(X_test[np.argwhere(y_test == 'Republican').flatten()], y_test[y_test == 'Republican']) * 100} %")
 
-    r = permutation_importance(clf, X_test, y_test, n_repeats=100, random_state=0)
+    r = permutation_importance(clf, X_test, y_test, n_repeats=30)#, random_state=0)
     for i in r.importances_mean.argsort()[::-1]:
         print(f"{[feature for feature in feature_name_dict if feature_name_dict[feature] == i][0]}: "
               f"{r.importances_mean[i]:.3f}"
@@ -170,12 +170,14 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
 
 if __name__ == "__main__":
     plot_distributions = False
-    check_logistic_regression = False
+    check_logistic_regression = True
     evaluate_models = True
-    cutoff_size = 5
+    cutoff_size = 30
+    cutoff_max = 500000
     data = json.load(open("conversation_metrics_v4.json"))
-    #feature_names = list(data[0].keys())[2:-1]
-    feature_names = ['size', 'width', 'density', 'unique_users', 'reply_to_reply_proportion']
+    feature_names = list(data[0].keys())[2:-1]
+    #feature_names = ['size', 'width', 'density', 'reply_to_reply_proportion']
+    feature_names = ['width', 'reply_to_reply_proportion']
 
     feature_name_dict = {
         name: idx for idx, name in enumerate(feature_names)
@@ -187,7 +189,7 @@ if __name__ == "__main__":
         max_conv_dict[feature] = maxConv
     json.dump(max_conv_dict, open("maxConvs.json", "w"))
 
-    X, y = create_dataset(data, cutoff_size, feature_names)
+    X, y = create_dataset(data, cutoff_size, cutoff_max, feature_names)
     print(f"The dataset contains {len(y[y == 'Democrat'])} conversations of Democrats and {len(y[y == 'Republican'])} "
           f"conversations of Republicans.")
 
@@ -196,7 +198,7 @@ if __name__ == "__main__":
             print(feature)
             plot_distribution(X, y, feature_name_dict, feature)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)#, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, stratify=y)#, random_state=42)
 
     if check_logistic_regression:
         run_logistic_regression(X_train, X_test, y_train, y_test)
