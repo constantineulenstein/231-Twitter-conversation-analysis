@@ -13,10 +13,9 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 
 
-def create_dataset(data, cutoff_size):
+def create_dataset(data, cutoff_size, feature_names):
     X = []
     y = []
-    feature_names = [feature for feature in data[0].keys()][2:-1]
     for datapoint in data:
         if datapoint["size"] >= cutoff_size:
             X.append([datapoint[feature] for feature in feature_names])
@@ -102,10 +101,12 @@ def plot_distribution(X, y, feature_name_dict, feature):
 if __name__ == "__main__":
     plot_distributions = False
     cutoff_size = 5
-    data = json.load(open("conversation_metrics_v2.json"))
+    data = json.load(open("conversation_metrics_v4.json"))
+    feature_names = list(data[0].keys())[2:-1]
+    feature_names = ['depth', 'width', 'average_clustering', 'reply_to_reply_proportion']
 
     feature_name_dict = {
-        name: idx for idx, name in enumerate(list(data[0].keys())[2:-1])
+        name: idx for idx, name in enumerate(feature_names)
     }
 
     max_conv_dict = {}
@@ -114,7 +115,7 @@ if __name__ == "__main__":
         max_conv_dict[feature] = maxConv
     json.dump(max_conv_dict, open("maxConvs.json", "w"))
 
-    X, y = create_dataset(data, cutoff_size)
+    X, y = create_dataset(data, cutoff_size, feature_names)
     print(f"The dataset contains {len(y[y == 'Democrat'])} conversations of Democrats and {len(y[y == 'Republican'])} "
           f"conversations of Republicans.")
 

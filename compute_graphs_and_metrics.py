@@ -10,6 +10,18 @@ import tweepy
 from tweet_stream import create_twitter_client
 
 
+def get_reply_chamber_proportion(tree, cutoff):
+    depth_1_nodes = list(tree.filter_nodes(lambda x: tree.depth(x) == 1))
+    counter = 0
+    if len(depth_1_nodes) == 0:
+        return 0
+    for depth_1_node in depth_1_nodes:
+        subtree_len = len(Tree(tree.subtree(depth_1_node.identifier)).all_nodes())
+        if subtree_len > cutoff:
+            counter += 1
+    return counter / len(depth_1_nodes)
+
+
 # Move this to a new module ?
 def create_tree(conversation_id, conversation_data):
     """conversation_data should already be in the right chronological order"""
@@ -31,7 +43,10 @@ def create_tree(conversation_id, conversation_data):
     )
     width = len(list(tree.filter_nodes(lambda x: tree.depth(x) == 1)))
 
-    return tree.depth(), tree.size(), width
+    reply_to_reply_proportion = len(list(tree.filter_nodes(lambda x: tree.depth(x) > 1))) / len(list(tree.all_nodes()))
+    reply_chamber_proportion = get_reply_chamber_proportion(tree, 2)
+
+    return tree.depth(), tree.size(), width, reply_to_reply_proportion, reply_chamber_proportion
 
 
 def create_graph(conv_id, conversation_data, is_directed=False, should_plot=False):
@@ -140,7 +155,7 @@ def compile_graph_data(dem_tweets, rep_tweets):
 
 
 if __name__ == "__main__":
-    output_file_name = "conversation_metrics_v3.json"
+    output_file_name = "conversation_metrics_v4.json"
     # Set to true to observe if our computations of average_clustering are precise
     should_compute_approximation_metrics = False
 
@@ -157,7 +172,7 @@ if __name__ == "__main__":
     convos_edges.sort(key=lambda c: len(c[1]))  # Sort by edges count
 
     for conv_idx, (conversation_id, edges, party, follower_count) in enumerate(
-        convos_edges[::-1]
+            convos_edges[::-1]
     ):
         print(f"{conv_idx} out of {len(convos_edges)}")
         print(
@@ -167,7 +182,8 @@ if __name__ == "__main__":
             len(edges),
             "edges",
         )
-        depth, size, width = create_tree(conversation_id, edges[::-1])
+        depth, size, width, reply_to_reply_proportion, echo_chamber_proportion = create_tree(conversation_id,
+                                                                                             edges[::-1])
         (
             average_clustering,
             density,
@@ -207,6 +223,8 @@ if __name__ == "__main__":
                 "diameter": diameter,
                 "reply_count": og_reply_count,
                 "unique_users": unique_users,
+                "reply_to_reply_proportion": reply_to_reply_proportion,
+                "echo_chamber_proportion": echo_chamber_proportion,
                 "follower_count": follower_count,
             }
         )
@@ -215,7 +233,6 @@ if __name__ == "__main__":
             json.dump(conversation_features, open(output_file_name, "w"))
 
     json.dump(conversation_features, open(output_file_name, "w"))
-
 
 # Ideas: Investigate how often OG replies to tweets -> might be sign for democrat or Rep
 # Maybe also investigate to how many people OG replies in graph
