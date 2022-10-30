@@ -67,12 +67,12 @@ def generate_ccdf_plots(dems, reps, feature):
         return x, 1 - cusum / cusum[-1]
 
     x_dems, y_dems = _ccdf(dems)
-    x_dems = np.insert(x_dems, 0, 0.) #Add so plot always starts at 0
-    y_dems = np.insert(y_dems, 0, 1.)
+    #x_dems = np.insert(x_dems, 0, 0.) #Add so plot always starts at 0
+    #y_dems = np.insert(y_dems, 0, 1.)
 
     x_reps, y_reps = _ccdf(reps)
-    x_reps = np.insert(x_reps, 0, 0.)
-    y_reps = np.insert(y_reps, 0, 1.)
+    #x_reps = np.insert(x_reps, 0, 0.)
+    #y_reps = np.insert(y_reps, 0, 1.)
     plt.xscale("log")
     plt.yscale("log")
     plt.plot(x_dems, y_dems, drawstyle='steps-post', label="Dems")
@@ -126,12 +126,24 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
         "Logistic Regression"
     ]
     classifiers = [
-        KNeighborsClassifier(3),
-        SVC(kernel="linear", C=0.025),
+        KNeighborsClassifier(5),
+        SVC(kernel="linear"),
         SVC(gamma=2, C=1),
         DecisionTreeClassifier(max_depth=5),
         RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(alpha=1, max_iter=1000),
+        MLPClassifier(max_iter=1000),
+        AdaBoostClassifier(),
+        GaussianNB(),
+        LogisticRegression()
+    ]
+
+    classifiers = [
+        KNeighborsClassifier(5),
+        SVC(kernel="linear"),
+        SVC(),
+        DecisionTreeClassifier(),
+        RandomForestClassifier(),
+        MLPClassifier(max_iter=100000),
         AdaBoostClassifier(),
         GaussianNB(),
         LogisticRegression()
@@ -185,10 +197,10 @@ def calculate_statistics(X, y, feature_name_dict):
 
 
 if __name__ == "__main__":
-    plot_distributions = False
-    check_logistic_regression = True
+    plot_distributions = True
+    check_logistic_regression = False
     evaluate_models = True
-    calculate_stats = True
+    calculate_stats = False
     cutoff_size = 10
     cutoff_max = 500000
     data = json.load(open("conversation_metrics_v5.json"))
