@@ -43,10 +43,18 @@ def create_tree(conversation_id, conversation_data):
     )
     width = len(list(tree.filter_nodes(lambda x: tree.depth(x) == 1)))
 
-    reply_to_reply_proportion = len(list(tree.filter_nodes(lambda x: tree.depth(x) > 1))) / len(list(tree.all_nodes()))
+    reply_to_reply_proportion = len(
+        list(tree.filter_nodes(lambda x: tree.depth(x) > 1))
+    ) / len(list(tree.all_nodes()))
     reply_chamber_proportion = get_reply_chamber_proportion(tree, 2)
 
-    return tree.depth(), tree.size(), width, reply_to_reply_proportion, reply_chamber_proportion
+    return (
+        tree.depth(),
+        tree.size(),
+        width,
+        reply_to_reply_proportion,
+        reply_chamber_proportion,
+    )
 
 
 def create_graph(conv_id, conversation_data, is_directed=False, should_plot=False):
@@ -73,22 +81,29 @@ def create_graph(conv_id, conversation_data, is_directed=False, should_plot=Fals
     G = G.subgraph(Gcc[0])
 
     unique_users = np.unique(unique_users)
-
-    trials_to_do = max(1000, 4 * len(conversation_data))
-    average_clustering = (
-        None
-        if G.is_directed()
-        else nx.approximation.average_clustering(G, trials=trials_to_do)
-    )
     density = nx.classes.function.density(G)
-    diameter = None if G.is_directed() else nx.approximation.diameter(G)
 
     if should_plot:
         nx.draw(G, node_size=2)
         plt.savefig(f"plots/graph_users_{conv_id}.png")
         plt.close()
 
-    return average_clustering, density, diameter, len(unique_users), og_reply_count
+    if not G.is_directed():
+        trials_to_do = max(1000, 4 * len(conversation_data))
+        average_clustering = nx.approximation.average_clustering(G, trials=trials_to_do)
+        diameter = nx.approximation.diameter(G)
+        return (
+            average_clustering,
+            density,
+            diameter,
+            len(unique_users),
+            og_reply_count,
+        )
+    else:
+        assortativity = nx.degree_assortativity_coefficient(G, x="in", y="out")
+        if np.isnan(assortativity):
+            return 0
+        return assortativity
 
 
 def compile_graph_data(dem_tweets, rep_tweets):
@@ -155,7 +170,7 @@ def compile_graph_data(dem_tweets, rep_tweets):
 
 
 if __name__ == "__main__":
-    output_file_name = "conversation_metrics_v4.json"
+    output_file_name = "conversation_metrics_v5.json"
     # Set to true to observe if our computations of average_clustering are precise
     should_compute_approximation_metrics = False
 
@@ -172,18 +187,25 @@ if __name__ == "__main__":
     convos_edges.sort(key=lambda c: len(c[1]))  # Sort by edges count
 
     for conv_idx, (conversation_id, edges, party, follower_count) in enumerate(
-            convos_edges[::-1]
+        convos_edges[::-1]
     ):
         print(f"{conv_idx} out of {len(convos_edges)}")
         print(
-            "Creating tree / graph for conversation",
+            "Conversation",
             conversation_id,
             "that has",
             len(edges),
             "edges",
         )
-        depth, size, width, reply_to_reply_proportion, echo_chamber_proportion = create_tree(conversation_id,
-                                                                                             edges[::-1])
+        print("Computing repies tree metrics")
+        (
+            depth,
+            size,
+            width,
+            reply_to_reply_proportion,
+            echo_chamber_proportion,
+        ) = create_tree(conversation_id, edges[::-1])
+        print("Computing undirected repliers graph metrics")
         (
             average_clustering,
             density,
@@ -191,6 +213,8 @@ if __name__ == "__main__":
             unique_users,
             og_reply_count,
         ) = create_graph(conversation_id, edges[::-1])
+        print("Computing directed repliers graph metrics")
+        assortativity = create_graph(conversation_id, edges[::-1], is_directed=True)
 
         if should_compute_approximation_metrics:
             clusterings = []
@@ -221,6 +245,7 @@ if __name__ == "__main__":
                 "average_clustering": average_clustering,
                 "density": density,
                 "diameter": diameter,
+                "assortativity": assortativity,
                 "reply_count": og_reply_count,
                 "unique_users": unique_users,
                 "reply_to_reply_proportion": reply_to_reply_proportion,
@@ -229,7 +254,7 @@ if __name__ == "__main__":
             }
         )
 
-        if conv_idx - 1 % 100 == 0:
+        if (conv_idx - 1) % 100 == 0:
             json.dump(conversation_features, open(output_file_name, "w"))
 
     json.dump(conversation_features, open(output_file_name, "w"))
