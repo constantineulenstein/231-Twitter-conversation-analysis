@@ -10,7 +10,7 @@ import tweepy
 from tweet_stream import create_twitter_client
 
 
-def get_reply_chamber_proportion(tree, cutoff):
+def get_reply_with_reply_proportion(tree, cutoff):
     depth_1_nodes = list(tree.filter_nodes(lambda x: tree.depth(x) == 1))
     counter = 0
     if len(depth_1_nodes) == 0:
@@ -46,14 +46,14 @@ def create_tree(conversation_id, conversation_data):
     reply_to_reply_proportion = len(
         list(tree.filter_nodes(lambda x: tree.depth(x) > 1))
     ) / len(list(tree.all_nodes()))
-    reply_chamber_proportion = get_reply_chamber_proportion(tree, 2)
+    reply_with_reply_proportion = get_reply_with_reply_proportion(tree, 2)
 
     return (
         tree.depth(),
         tree.size(),
         width,
         reply_to_reply_proportion,
-        reply_chamber_proportion,
+        reply_with_reply_proportion,
     )
 
 
@@ -203,7 +203,7 @@ if __name__ == "__main__":
             size,
             width,
             reply_to_reply_proportion,
-            echo_chamber_proportion,
+            reply_with_reply_proportion,
         ) = create_tree(conversation_id, edges[::-1])
         print("Computing undirected repliers graph metrics")
         (
@@ -249,7 +249,7 @@ if __name__ == "__main__":
                 "reply_count": og_reply_count,
                 "unique_users": unique_users,
                 "reply_to_reply_proportion": reply_to_reply_proportion,
-                "echo_chamber_proportion": echo_chamber_proportion,
+                "reply_with_reply_proportion": reply_with_reply_proportion,
                 "follower_count": follower_count,
             }
         )

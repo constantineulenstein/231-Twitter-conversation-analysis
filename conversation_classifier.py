@@ -143,7 +143,7 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
         SVC(),
         DecisionTreeClassifier(),
         RandomForestClassifier(),
-        MLPClassifier(max_iter=100000),
+        MLPClassifier(hidden_layer_sizes=(10,10,), max_iter=100000),
         AdaBoostClassifier(),
         GaussianNB(),
         LogisticRegression()
