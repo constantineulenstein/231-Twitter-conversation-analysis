@@ -31,9 +31,7 @@ def get_conversation_data(conv_id, client):
     Path("data/conversations").mkdir(exist_ok=True)
 
     # See if cached data exists and if so, return it
-    cached_data_file = Path(
-        f"data/conversations/conversation_with_authors_{conv_id}.json"
-    )
+    cached_data_file = Path(f"data/conversations/conversation_repulled_{conv_id}.json")
     if cached_data_file.exists():
         cached_data = json.load(open(cached_data_file, "r"))
         print(
