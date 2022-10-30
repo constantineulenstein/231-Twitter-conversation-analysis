@@ -11,6 +11,7 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
 
 
 def create_dataset(data, cutoff_size, feature_names):
@@ -29,7 +30,7 @@ def create_dataset(data, cutoff_size, feature_names):
 
 
 def stratified_kFold(X, y, clf, verbose):
-    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+    skf = StratifiedKFold(n_splits=10, shuffle=True)#, random_state=42)
     lst_accu_stratified = []
     lst_accu_dems_stratified = []
     lst_accu_reps_stratified = []
@@ -43,7 +44,7 @@ def stratified_kFold(X, y, clf, verbose):
         lst_accu_reps_stratified.append(clf.score(X_test_fold[np.argwhere(y_test_fold=="Republican").flatten()], y_test_fold[y_test_fold=="Republican"]))
 
     if verbose:
-        print('List of possible accuracy:', lst_accu_stratified)
+        #print('List of possible accuracy:', lst_accu_stratified)
         print('\nMaximum Accuracy That can be obtained from this model is:',
               max(lst_accu_stratified) * 100, '%')
         print('\nMinimum Accuracy:',
@@ -98,12 +99,83 @@ def plot_distribution(X, y, feature_name_dict, feature):
     generate_ccdf_plots(dem_values, rep_values, feature)
 
 
+def run_logistic_regression(X_train, X_test, y_train, y_test):
+    scaler = preprocessing.StandardScaler()
+    model = LogisticRegression()
+    clf = make_pipeline(scaler, model)
+    clf.fit(X_train, y_train)
+    #acc = stratified_kFold(X_train, y_train, clf, verbose=False)
+    print(f"\nThe accuracy on final test set is {clf.score(X_test, y_test) * 100} %")
+    importance = model.coef_[0]
+    for i, v in enumerate(importance):
+        print(f'Feature: {feature_names[i]}, Score: {v}')
+
+    plt.bar([x for x in range(len(importance))], importance)
+    plt.show()
+
+def run_model_evaluation(X_train, X_test, y_train, y_test):
+    names = [
+        "Nearest Neighbors",
+        "Linear SVM",
+        "RBF SVM",
+        "Decision Tree",
+        "Random Forest",
+        "Neural Net",
+        "AdaBoost",
+        "Naive Bayes",
+        "Logistic Regression"
+    ]
+    classifiers = [
+        KNeighborsClassifier(3),
+        SVC(kernel="linear", C=0.025),
+        SVC(gamma=2, C=1),
+        DecisionTreeClassifier(max_depth=5),
+        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+        MLPClassifier(alpha=1, max_iter=1000),
+        AdaBoostClassifier(),
+        GaussianNB(),
+        LogisticRegression()
+    ]
+
+    model_accs = {}
+    for i, model in enumerate(classifiers):
+        scaler = preprocessing.StandardScaler()
+        clf = make_pipeline(scaler, model)
+        acc = stratified_kFold(X_train, y_train, clf, verbose=False)
+        model_accs[names[i]] = acc
+
+    print(f"Model accuracies are: \n", model_accs)
+
+    best_model = max(model_accs, key=model_accs.get)
+    print(f"\nBest model is {best_model} with following metrics: \n")
+
+    scaler = preprocessing.StandardScaler()
+    model = classifiers[names.index(best_model)]
+    clf = make_pipeline(scaler, model)
+    acc = stratified_kFold(X_train, y_train, clf, verbose=True)
+    clf.fit(X_train, y_train)
+    print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
+    print(
+        f"\n The accuracy on final test set is {clf.score(X_test, y_test) * 100} %, the accuracy on final test set for "
+        f"Democrats is {clf.score(X_test[np.argwhere(y_test == 'Democrat').flatten()], y_test[y_test == 'Democrat']) * 100} "
+        f"%, the accuracy on final test set "
+        f"for Republicans is {clf.score(X_test[np.argwhere(y_test == 'Republican').flatten()], y_test[y_test == 'Republican']) * 100} %")
+
+    r = permutation_importance(clf, X_test, y_test, n_repeats=100, random_state=0)
+    for i in r.importances_mean.argsort()[::-1]:
+        print(f"{[feature for feature in feature_name_dict if feature_name_dict[feature] == i][0]}: "
+              f"{r.importances_mean[i]:.3f}"
+              f" +/- {r.importances_std[i]:.3f}")
+
+
 if __name__ == "__main__":
     plot_distributions = False
+    check_logistic_regression = False
+    evaluate_models = True
     cutoff_size = 5
     data = json.load(open("conversation_metrics_v4.json"))
-    feature_names = list(data[0].keys())[2:-1]
-    feature_names = ['depth', 'width', 'average_clustering', 'reply_to_reply_proportion']
+    #feature_names = list(data[0].keys())[2:-1]
+    feature_names = ['size', 'width', 'density', 'unique_users', 'reply_to_reply_proportion']
 
     feature_name_dict = {
         name: idx for idx, name in enumerate(feature_names)
@@ -124,50 +196,14 @@ if __name__ == "__main__":
             print(feature)
             plot_distribution(X, y, feature_name_dict, feature)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-    names = [
-        "Nearest Neighbors",
-        "Linear SVM",
-        "RBF SVM",
-        "Decision Tree",
-        "Random Forest",
-        "Neural Net",
-        "AdaBoost",
-        "Naive Bayes",
-    ]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)#, random_state=42)
 
-    classifiers = [
-        KNeighborsClassifier(3),
-        SVC(kernel="linear", C=0.025),
-        SVC(gamma=2, C=1),
-        DecisionTreeClassifier(max_depth=5),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(alpha=1, max_iter=1000),
-        AdaBoostClassifier(),
-        GaussianNB(),
-    ]
+    if check_logistic_regression:
+        run_logistic_regression(X_train, X_test, y_train, y_test)
 
-    model_accs = {}
-    for i, model in enumerate(classifiers):
-        scaler = preprocessing.StandardScaler()
-        clf = make_pipeline(scaler, model)
-        acc = stratified_kFold(X_train, y_train, clf, verbose=False)
-        model_accs[names[i]] = acc
+    if evaluate_models:
+        run_model_evaluation(X_train, X_test, y_train, y_test)
 
-    print(f"\nThe share in Democrats is {sum((y == 'Democrat')) / len(y)}")
-    print(f"\nModel accuracies are: \n", model_accs)
 
-    best_model = max(model_accs, key=model_accs.get)
-    print(f"Best model is {best_model} with following metrics: \n")
 
-    scaler = preprocessing.StandardScaler()
-    clf = make_pipeline(scaler, classifiers[names.index(best_model)])
-    acc = stratified_kFold(X_train, y_train, clf, verbose=True)
-    clf.fit(X_train, y_train)
-    print(f"\n The accuracy on final test set is {clf.score(X_test, y_test) * 100} %")
 
-    r = permutation_importance(clf, X_test, y_test, n_repeats=100, random_state=0)
-    for i in r.importances_mean.argsort()[::-1]:
-        print(f"{[feature for feature in feature_name_dict if feature_name_dict[feature] == i][0]}: "
-              f"{r.importances_mean[i]:.3f}"
-              f" +/- {r.importances_std[i]:.3f}")
