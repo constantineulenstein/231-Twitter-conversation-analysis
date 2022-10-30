@@ -167,31 +167,54 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
               f"{r.importances_mean[i]:.3f}"
               f" +/- {r.importances_std[i]:.3f}")
 
+def calculate_statistics(X, y, feature_name_dict):
+
+    dem_idx = np.argwhere(y == "Democrat")
+    rep_idx = np.argwhere(y == "Republican")
+    dem_values = X[dem_idx]
+    rep_values = X[rep_idx]
+
+    dem_means = np.mean(dem_values, axis=0)[0]
+    rep_means = np.mean(rep_values, axis=0)[0]
+
+    dem_std = np.std(dem_values, axis=0)[0]
+    rep_std = np.std(rep_values, axis=0)[0]
+
+    return {feature: (dem_means[i], dem_std[i]) for i, feature in enumerate(feature_name_dict)}, \
+           {feature: (rep_means[i], rep_std[i]) for i, feature in enumerate(feature_name_dict)},
+
 
 if __name__ == "__main__":
     plot_distributions = False
     check_logistic_regression = True
     evaluate_models = True
-    cutoff_size = 30
+    calculate_stats = True
+    cutoff_size = 10
     cutoff_max = 500000
-    data = json.load(open("conversation_metrics_v4.json"))
+    data = json.load(open("conversation_metrics_v5.json"))
     feature_names = list(data[0].keys())[2:-1]
-    #feature_names = ['size', 'width', 'density', 'reply_to_reply_proportion']
-    feature_names = ['width', 'reply_to_reply_proportion']
+    #feature_names = ['size', 'width', 'depth', 'density', 'reply_to_reply_proportion', 'echo_chamber_proportion', "assortativity"]
+    #feature_names = ['width', 'reply_to_reply_proportion']
 
     feature_name_dict = {
         name: idx for idx, name in enumerate(feature_names)
     }
 
-    max_conv_dict = {}
-    for feature in feature_name_dict:
-        maxConv = max(data, key=lambda x: x[feature])
-        max_conv_dict[feature] = maxConv
-    json.dump(max_conv_dict, open("maxConvs.json", "w"))
+    # Uncomment for getting the graphs with max feature values
+    #max_conv_dict = {}
+    #for feature in feature_name_dict:
+    #    maxConv = max(data, key=lambda x: x[feature])
+    #    max_conv_dict[feature] = maxConv
+    #json.dump(max_conv_dict, open("maxConvs.json", "w"))
 
     X, y = create_dataset(data, cutoff_size, cutoff_max, feature_names)
     print(f"The dataset contains {len(y[y == 'Democrat'])} conversations of Democrats and {len(y[y == 'Republican'])} "
           f"conversations of Republicans.")
+
+    if calculate_stats:
+        dem_stats, rep_stats = calculate_statistics(X, y, feature_name_dict)
+        print("Dem Stats: ", dem_stats)
+        print("Rep Stats: ", rep_stats)
 
     if plot_distributions:
         for feature in feature_name_dict.keys():
