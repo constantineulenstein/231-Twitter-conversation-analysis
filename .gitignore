@@ -1,6 +1,6 @@
 creds.txt
 data/
-plots/
+plots*/
 *.pyc
 *.zip
 
