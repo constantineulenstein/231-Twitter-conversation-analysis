@@ -119,7 +119,7 @@ def run_logistic_regression(X_train, X_test, y_train, y_test, feature_names):
     plt.title("Coefficients of Logistic Regression Model")
     plt.savefig(f"plots/logistic_regression_feature_importance.png")
 
-def run_model_evaluation(X_train, X_test, y_train, y_test):
+def run_model_evaluation(X_train, X_test, y_train, y_test, feature_name_dict):
     names = [
         "Nearest Neighbors",
         "Linear SVM",
@@ -179,11 +179,28 @@ def run_model_evaluation(X_train, X_test, y_train, y_test):
         f"%, the accuracy on final test set "
         f"for Republicans is {clf.score(X_test[np.argwhere(y_test == 'Republican').flatten()], y_test[y_test == 'Republican']) * 100} %")
 
-    r = permutation_importance(clf, X_test, y_test, n_repeats=30)#, random_state=0)
+    r = permutation_importance(clf, X_test, y_test, n_repeats=30)
+    means = []
+    stds = []
     for i in r.importances_mean.argsort()[::-1]:
+        means.append(r.importances_mean[i])
+        stds.append(r.importances_std[i])
         print(f"{[feature for feature in feature_name_dict if feature_name_dict[feature] == i][0]}: "
               f"{r.importances_mean[i]:.3f}"
               f" +/- {r.importances_std[i]:.3f}")
+
+    plt.figure()
+    feature_names = list(feature_name_dict.keys())
+    feature_names = [feature.replace('_to_', '-to-') for feature in feature_names]
+    feature_names = [feature.replace('_with_', '-with-') for feature in feature_names]
+    feature_names = [feature.replace('_', '\n') for feature in feature_names]
+    plt.bar(feature_names, means, yerr=stds, align='center', alpha=0.5, ecolor='black', capsize=10)
+    plt.title('Permutation Importance of Features')
+    plt.xticks(fontsize=9, rotation=90)
+    plt.subplots_adjust(bottom=0.25)
+    plt.grid()
+    plt.savefig(f"plots/permutation_importance.png")
+
 
 def calculate_statistics(X, y, feature_name_dict):
 
@@ -203,16 +220,16 @@ def calculate_statistics(X, y, feature_name_dict):
 
 
 if __name__ == "__main__":
-    plot_distributions = True
-    check_logistic_regression = True
-    evaluate_models = False
+    plot_distributions = False
+    check_logistic_regression = False
+    evaluate_models = True
     calculate_stats = False
-    cutoff_size = 10
+    cutoff_size = 20
     cutoff_max = 500000
     data = json.load(open("conversation_metrics_v6.json"))
     feature_names = list(data[0].keys())[2:-1]
     #feature_names = ['size', 'width', 'depth', 'density', 'reply_to_reply_proportion', 'echo_chamber_proportion', "assortativity"]
-    #feature_names = ['width', 'reply_to_reply_proportion']
+    feature_names = ['width', 'reply_with_reply_proportion', 'reciprocity', 'density', 'unique_users']
 
     feature_name_dict = {
         name: idx for idx, name in enumerate(feature_names)
@@ -245,7 +262,7 @@ if __name__ == "__main__":
         run_logistic_regression(X_train, X_test, y_train, y_test, feature_names)
 
     if evaluate_models:
-        run_model_evaluation(X_train, X_test, y_train, y_test)
+        run_model_evaluation(X_train, X_test, y_train, y_test, feature_name_dict)
 
 
 
