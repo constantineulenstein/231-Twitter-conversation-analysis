@@ -147,7 +147,7 @@ def compile_graph_data(dem_tweets, rep_tweets):
                 tweet["conversation_id"],
                 json.load(
                     open(
-                        f"data/conversations/conversation_with_authors_{tweet['conversation_id']}.json"
+                        f"data/conversations/conversation_repulled_{tweet['conversation_id']}.json"
                     )
                 ),
                 party,
@@ -170,7 +170,7 @@ def compile_graph_data(dem_tweets, rep_tweets):
 
 
 if __name__ == "__main__":
-    output_file_name = "conversation_metrics_v5.json"
+    output_file_name = "conversation_metrics_v6.json"
     # Set to true to observe if our computations of average_clustering are precise
     should_compute_approximation_metrics = False
 
