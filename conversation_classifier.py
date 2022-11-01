@@ -114,8 +114,8 @@ def run_logistic_regression(X_train, X_test, y_train, y_test, feature_names):
     feature_names = [feature.replace('_with_', '-with-') for feature in feature_names]
     feature_names = [feature.replace('_', '\n') for feature in feature_names]
     plt.bar(feature_names, importance)
-    plt.xticks(fontsize=8, rotation=90)
-    plt.subplots_adjust(bottom=0.2)
+    plt.xticks(fontsize=9, rotation=90)
+    plt.subplots_adjust(bottom=0.25)
     plt.title("Coefficients of Logistic Regression Model")
     plt.savefig(f"plots/logistic_regression_feature_importance.png")
 
@@ -203,13 +203,13 @@ def calculate_statistics(X, y, feature_name_dict):
 
 
 if __name__ == "__main__":
-    plot_distributions = False
+    plot_distributions = True
     check_logistic_regression = True
     evaluate_models = False
     calculate_stats = False
     cutoff_size = 10
     cutoff_max = 500000
-    data = json.load(open("conversation_metrics_v4.json"))
+    data = json.load(open("conversation_metrics_v6.json"))
     feature_names = list(data[0].keys())[2:-1]
     #feature_names = ['size', 'width', 'depth', 'density', 'reply_to_reply_proportion', 'echo_chamber_proportion', "assortativity"]
     #feature_names = ['width', 'reply_to_reply_proportion']
