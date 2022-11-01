@@ -1,10 +1,13 @@
+from pathlib import Path
 import networkx as nx
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+from networkx.drawing.nx_pydot import graphviz_layout
 
-
-def create_graph(conv_id, is_directed=False):
+def create_graph(conv_id, title, is_directed=False):
+    node_size = 10
+    
     conversation_data = (
         json.load(open(f"data/conversations/conversation_with_authors_{conv_id}.json")),
     )[0]
@@ -28,13 +31,50 @@ def create_graph(conv_id, is_directed=False):
         key=len,
         reverse=True,
     )
-    G = G0.subgraph(Gcc[0])
+    G: nx.Graph = G0.subgraph(Gcc[0])
 
     plt.figure(figsize=(12, 12))
-    nx.draw(G, node_size=3)
-    plt.savefig(f"plots/graph_users_{conv_id}.png")
+    nx.draw(G, node_size=node_size)
+    plt.savefig(f"plots_max_graphs/graph_{title}_nx{'_di' if is_directed else ''}.png")
+    plt.close()
+    
+    pos = graphviz_layout(G, prog="dot")
+    plt.figure(figsize=(12, 12))
+    nx.draw(G, pos, node_size=node_size)
+    plt.savefig( f"plots_max_graphs/graph_{title}_dot{'_di' if is_directed else ''}.png")
+    plt.close()
+    
+    pos = graphviz_layout(G, prog="osage")
+    plt.figure(figsize=(12, 12))
+    nx.draw(G, pos, node_size=node_size)
+    plt.savefig( f"plots_max_graphs/graph_{title}_osage{'_di' if is_directed else ''}.png")
+    plt.close()
+    
+    pos = graphviz_layout(G, prog="fdp")
+    plt.figure(figsize=(12, 12))
+    nx.draw(G, pos, node_size=node_size)
+    plt.savefig( f"plots_max_graphs/graph_{title}_fdp{'_di' if is_directed else ''}.png")
+    plt.close()
+    
+    pos = graphviz_layout(G, prog="neato")
+    plt.figure(figsize=(12, 12))
+    nx.draw(G, pos, node_size=node_size)
+    plt.savefig( f"plots_max_graphs/graph_{title}_neato{'_di' if is_directed else ''}.png")
+    plt.close()
+    
+    pos = graphviz_layout(G, prog="twopi")
+    plt.figure(figsize=(12, 12))
+    nx.draw(G, pos, node_size=node_size)
+    plt.savefig( f"plots_max_graphs/graph_{title}_twopi{'_di' if is_directed else ''}.png")
     plt.close()
 
 
 if __name__ == "__main__":
-    create_graph(1583843365233504257)
+    Path("plots_max_graphs/").mkdir(exist_ok=True)
+    
+    max_convs = json.load(open("maxConvs.json"))
+    min_convs = json.load(open("minConvs.json"))
+    
+    for feature in max_convs:
+        create_graph(max_convs[feature]["conversation_id"], f"{feature}_max", is_directed=True)
+        create_graph(min_convs[feature]["conversation_id"], f"{feature}_min", is_directed=True)
