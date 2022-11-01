@@ -21,9 +21,7 @@ def create_dataset(data, cutoff_size, cutoff_max, feature_names):
         if datapoint["size"] >= cutoff_size and datapoint["size"] <= cutoff_max:
             X.append([datapoint[feature] for feature in feature_names])
             y.append(datapoint["party"])
-        # X.append([datapoint["depth"], datapoint["size"], datapoint["width"], datapoint["structural_virality"],
-        #          datapoint["density"], datapoint["diameter"], datapoint["reply_count"], datapoint["unique_users"]])
-        # y.append(datapoint["author_id"])
+
     X = np.array(X)
     y = np.array(y)
     return X, y
@@ -73,6 +71,7 @@ def generate_ccdf_plots(dems, reps, feature):
     x_reps, y_reps = _ccdf(reps)
     #x_reps = np.insert(x_reps, 0, 0.)
     #y_reps = np.insert(y_reps, 0, 1.)
+    plt.figure()
     plt.xscale("log")
     plt.yscale("log")
     plt.plot(x_dems, y_dems, drawstyle='steps-post', label="Dems")
@@ -83,7 +82,7 @@ def generate_ccdf_plots(dems, reps, feature):
     current_values = plt.gca().get_yticks()
     plt.gca().set_yticklabels(['{:,.2%}'.format(x) for x in current_values])
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"plots/ccdf_graph_{feature}.png")
 
 
 def plot_distribution(X, y, feature_name_dict, feature):
@@ -99,7 +98,7 @@ def plot_distribution(X, y, feature_name_dict, feature):
     generate_ccdf_plots(dem_values, rep_values, feature)
 
 
-def run_logistic_regression(X_train, X_test, y_train, y_test):
+def run_logistic_regression(X_train, X_test, y_train, y_test, feature_names):
     scaler = preprocessing.StandardScaler()
     model = LogisticRegression()
     clf = make_pipeline(scaler, model)
@@ -110,8 +109,15 @@ def run_logistic_regression(X_train, X_test, y_train, y_test):
     for i, v in enumerate(importance):
         print(f'Feature: {feature_names[i]}, Score: {v}')
 
-    plt.bar([x for x in range(len(importance))], importance)
-    plt.show()
+    plt.figure()
+    feature_names = [feature.replace('_to_', '-to-') for feature in feature_names]
+    feature_names = [feature.replace('_with_', '-with-') for feature in feature_names]
+    feature_names = [feature.replace('_', '\n') for feature in feature_names]
+    plt.bar(feature_names, importance)
+    plt.xticks(fontsize=8, rotation=90)
+    plt.subplots_adjust(bottom=0.2)
+    plt.title("Coefficients of Logistic Regression Model")
+    plt.savefig(f"plots/logistic_regression_feature_importance.png")
 
 def run_model_evaluation(X_train, X_test, y_train, y_test):
     names = [
@@ -197,13 +203,13 @@ def calculate_statistics(X, y, feature_name_dict):
 
 
 if __name__ == "__main__":
-    plot_distributions = True
-    check_logistic_regression = False
-    evaluate_models = True
+    plot_distributions = False
+    check_logistic_regression = True
+    evaluate_models = False
     calculate_stats = False
     cutoff_size = 10
     cutoff_max = 500000
-    data = json.load(open("conversation_metrics_v5.json"))
+    data = json.load(open("conversation_metrics_v4.json"))
     feature_names = list(data[0].keys())[2:-1]
     #feature_names = ['size', 'width', 'depth', 'density', 'reply_to_reply_proportion', 'echo_chamber_proportion', "assortativity"]
     #feature_names = ['width', 'reply_to_reply_proportion']
@@ -236,7 +242,7 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, stratify=y)#, random_state=42)
 
     if check_logistic_regression:
-        run_logistic_regression(X_train, X_test, y_train, y_test)
+        run_logistic_regression(X_train, X_test, y_train, y_test, feature_names)
 
     if evaluate_models:
         run_model_evaluation(X_train, X_test, y_train, y_test)
