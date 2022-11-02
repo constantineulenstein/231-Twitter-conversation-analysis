@@ -100,7 +100,7 @@ def create_graph(conv_id, conversation_data, is_directed=False, should_plot=Fals
             og_reply_count,
         )
     else:
-        assortativity = nx.degree_assortativity_coefficient(G, x="in", y="out")
+        assortativity = nx.degree_assortativity_coefficient(G, x="out", y="out")
         reciprocity = nx.reciprocity(G)
         if np.isnan(assortativity):
             return 0, reciprocity
