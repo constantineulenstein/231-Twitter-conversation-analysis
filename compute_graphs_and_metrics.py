@@ -65,8 +65,8 @@ def create_graph(conv_id, conversation_data, is_directed=False, should_plot=Fals
     unique_users = [og_author]
     og_reply_count = 0
 
-    for ((_, author_id), (_, replier_id)) in conversation_data:
-        G.add_edge(author_id, replier_id)
+    for ((_, replier_id), (_, author_id)) in conversation_data:
+        G.add_edge(replier_id, author_id)
         unique_users.append(author_id)
         if author_id == og_author:
             og_reply_count += 1

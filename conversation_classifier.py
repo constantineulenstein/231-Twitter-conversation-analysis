@@ -203,7 +203,6 @@ def run_model_evaluation(X_train, X_test, y_train, y_test, feature_name_dict):
 
 
 def calculate_statistics(X, y, feature_name_dict):
-
     dem_idx = np.argwhere(y == "Democrat")
     rep_idx = np.argwhere(y == "Republican")
     dem_values = X[dem_idx]
@@ -236,11 +235,17 @@ if __name__ == "__main__":
     }
 
     # Uncomment for getting the graphs with max feature values
-    #max_conv_dict = {}
-    #for feature in feature_name_dict:
-    #    maxConv = max(data, key=lambda x: x[feature])
-    #    max_conv_dict[feature] = maxConv
-    #json.dump(max_conv_dict, open("maxConvs.json", "w"))
+    max_conv_dict = {}
+    min_conv_dict = {}
+    for feature in feature_name_dict:
+       data_filtered = filter(lambda row: row["size"] > 100 and row["size"] < 1000, data)
+       max_conv = max(data_filtered, key=lambda x: x[feature])
+       data_filtered = filter(lambda row: row["size"] > 100 and row["size"] < 1000, data)
+       min_conv = min(data_filtered, key=lambda x: x[feature])
+       max_conv_dict[feature] = max_conv
+       min_conv_dict[feature] = min_conv
+    json.dump(max_conv_dict, open("maxConvs.json", "w"))
+    json.dump(min_conv_dict, open("minConvs.json", "w"))
 
     X, y = create_dataset(data, cutoff_size, cutoff_max, feature_names)
     print(f"The dataset contains {len(y[y == 'Democrat'])} conversations of Democrats and {len(y[y == 'Republican'])} "
