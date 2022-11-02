@@ -67,8 +67,8 @@ def create_graph(conv_id, conversation_data, is_directed=False, should_plot=Fals
 
     for ((_, replier_id), (_, author_id)) in conversation_data:
         G.add_edge(replier_id, author_id)
-        unique_users.append(author_id)
-        if author_id == og_author:
+        unique_users.append(replier_id)
+        if replier_id == og_author:
             og_reply_count += 1
 
     Gcc = sorted(
