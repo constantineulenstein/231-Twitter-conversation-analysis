@@ -103,7 +103,7 @@ def create_graph(conv_id, conversation_data, is_directed=False, should_plot=Fals
         assortativity = nx.degree_assortativity_coefficient(G, x="in", y="out")
         reciprocity = nx.reciprocity(G)
         if np.isnan(assortativity):
-            return 0
+            return 0, reciprocity
         return assortativity, reciprocity
 
 
@@ -215,7 +215,9 @@ if __name__ == "__main__":
             og_reply_count,
         ) = create_graph(conversation_id, edges[::-1])
         print("Computing directed repliers graph metrics")
-        assortativity, reciprocity = create_graph(conversation_id, edges[::-1], is_directed=True)
+        assortativity, reciprocity = create_graph(
+            conversation_id, edges[::-1], is_directed=True
+        )
 
         if should_compute_approximation_metrics:
             clusterings = []
