@@ -104,6 +104,8 @@ def create_graph(conv_id, conversation_data, is_directed=False, should_plot=Fals
         reciprocity = nx.reciprocity(G)
         if np.isnan(assortativity):
             return 0, reciprocity
+        if np.isinf(assortativity):
+            return 1, reciprocity
         return assortativity, reciprocity
 
 
