@@ -269,7 +269,7 @@ if __name__ == "__main__":
     cutoff_size = 20
     cutoff_max = 500000
     data = json.load(open("conversation_metrics_v6.json"))
-    feature_names = list(data[0].keys())[2:-1]
+    # feature_names = list(data[0].keys())[2:-1]
     # feature_names = ['size', 'width', 'depth', 'density', 'reply_to_reply_proportion', 'echo_chamber_proportion', "assortativity"]
     feature_names = [
         "width",
