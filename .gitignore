@@ -3,4 +3,6 @@ data/
 plots*/
 *.pyc
 *.zip
-
+.idea
+__pycache__/
+include/
